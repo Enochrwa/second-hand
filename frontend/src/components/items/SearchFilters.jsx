@@ -4,7 +4,7 @@ import { useForm } from '../../hooks/useForm';
 import { ITEM_CATEGORIES, ITEM_CONDITIONS } from '../../utils/constants';
 
 const SearchFilters = ({ onSearch }) => {
-  const { values, handleChange } = useForm({
+  const { values, handleChange, resetForm } = useForm({ // Added resetForm
     query: '',
     category: '',
     minPrice: '',
@@ -28,7 +28,7 @@ const SearchFilters = ({ onSearch }) => {
 
   const handleReset = () => {
     // Reset form and trigger search with empty filters
-    document.getElementById('search-form').reset();
+    resetForm(); // Use resetForm from useForm hook
     onSearch({});
   };
 

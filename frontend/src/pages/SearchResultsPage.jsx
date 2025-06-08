@@ -18,7 +18,7 @@ const SearchResultsPage = () => {
         setLoading(true);
         // Convert searchParams to an object for the service
         const params = Object.fromEntries(searchParams.entries());
-        const response = await itemService.searchItems(params);
+        const response = await itemService.getItems(params); // Changed searchItems to getItems
         setItems(response.data.data);
         setError("");
       } catch (err) {

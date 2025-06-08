@@ -4,15 +4,25 @@ import { useNotification } from '../../hooks/useNotification';
 import adminService from '../../services/adminService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
+import ConfirmationModal from '../common/ConfirmationModal'; // Import ConfirmationModal
 
 const PendingItems = () => {
   const { isAdmin } = useAuth();
   const { addNotification } = useNotification();
-  
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState(null);
+  const [modalActionType, setModalActionType] = useState(''); // 'approve' or 'reject'
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalConfirmText, setModalConfirmText] = useState('Confirm');
+  const [modalConfirmButtonClass, setModalConfirmButtonClass] = useState('bg-red-600 hover:bg-red-700 focus:ring-red-500'); // Default to danger
+
   useEffect(() => {
     const fetchPendingItems = async () => {
       try {
@@ -28,29 +38,62 @@ const PendingItems = () => {
     
     fetchPendingItems();
   }, []);
-  
-  const handleApprove = async (id) => {
-    try {
-      await adminService.approveItem(id);
-      setItems(items.filter(item => item._id !== id));
-      addNotification('Item approved successfully', 'success');
-    } catch (err) {
-      console.error('Error approving item:', err);
-      addNotification('Failed to approve item', 'error');
+
+  const openConfirmationModal = (itemId, actionType) => {
+    setSelectedItemId(itemId);
+    setModalActionType(actionType);
+    if (actionType === 'approve') {
+      setModalTitle('Confirm Approval');
+      setModalMessage('Are you sure you want to approve this item?');
+      setModalConfirmText('Approve');
+      setModalConfirmButtonClass('bg-green-600 hover:bg-green-700 focus:ring-green-500');
+    } else if (actionType === 'reject') {
+      setModalTitle('Confirm Rejection');
+      setModalMessage('Are you sure you want to reject this item? This action cannot be undone.');
+      setModalConfirmText('Reject');
+      setModalConfirmButtonClass('bg-red-600 hover:bg-red-700 focus:ring-red-500');
     }
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedItemId(null);
+    setModalActionType('');
+    setModalTitle('');
+    setModalMessage('');
+    setModalConfirmText('Confirm');
+    setModalConfirmButtonClass('bg-red-600 hover:bg-red-700 focus:ring-red-500');
+  };
+
+  const handleConfirmAction = async () => {
+    if (!selectedItemId || !modalActionType) return;
+
+    if (modalActionType === 'approve') {
+      try {
+        await adminService.approveItem(selectedItemId);
+        setItems(items.filter(item => item._id !== selectedItemId));
+        addNotification('Item approved successfully', 'success');
+      } catch (err) {
+        console.error('Error approving item:', err);
+        addNotification('Failed to approve item: ' + (err.response?.data?.error || err.message), 'error');
+      }
+    } else if (modalActionType === 'reject') {
+      try {
+        await adminService.rejectItem(selectedItemId);
+        setItems(items.filter(item => item._id !== selectedItemId));
+        addNotification('Item rejected successfully', 'success');
+      } catch (err) {
+        console.error('Error rejecting item:', err);
+        addNotification('Failed to reject item: ' + (err.response?.data?.error || err.message), 'error');
+      }
+    }
+    closeModal();
   };
   
-  const handleReject = async (id) => {
-    try {
-      await adminService.rejectItem(id);
-      setItems(items.filter(item => item._id !== id));
-      addNotification('Item rejected successfully', 'success');
-    } catch (err) {
-      console.error('Error rejecting item:', err);
-      addNotification('Failed to reject item', 'error');
-    }
-  };
-  
+  // Original handleApprove and handleReject are effectively replaced by handleConfirmAction
+  // for the direct action, but the core logic is now within handleConfirmAction.
+
   if (!isAdmin) {
     return (
       <div className="text-center py-12">
@@ -155,13 +198,13 @@ const PendingItems = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => handleApprove(item._id)}
+                        onClick={() => openConfirmationModal(item._id, 'approve')}
                         className="text-green-600 hover:text-green-900"
                       >
                         Approve
                       </button>
                       <button
-                        onClick={() => handleReject(item._id)}
+                        onClick={() => openConfirmationModal(item._id, 'reject')}
                         className="text-red-600 hover:text-red-900"
                       >
                         Reject
@@ -174,6 +217,16 @@ const PendingItems = () => {
           </table>
         </div>
       </div>
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onConfirm={handleConfirmAction}
+        title={modalTitle}
+        message={modalMessage}
+        confirmText={modalConfirmText}
+        // For custom button colors, the ConfirmationModal would need to support a confirmButtonClass prop
+        confirmButtonClass={modalConfirmButtonClass} // Pass the dynamic class
+      />
     </div>
   );
 };

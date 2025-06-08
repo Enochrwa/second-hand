@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { formatPrice, formatDate, truncateText } from '../../utils/formatters';
 import { ITEM_STATUS } from '../../utils/constants';
 
+const DEFAULT_ITEM_IMAGE = "/assets/default-item.png";
+
 const ItemCard = ({ item }) => {
   const { _id, title, description, price, photos, status, category, condition, createdAt } = item;
   
@@ -12,6 +14,10 @@ const ItemCard = ({ item }) => {
     : 'badge-danger';
   
   const statusText = status === ITEM_STATUS.AVAILABLE ? 'Available' : 'Sold';
+
+  const handleImageError = (event) => {
+    event.target.src = DEFAULT_ITEM_IMAGE;
+  };
   
   return (
     <div className="card h-full flex flex-col">
@@ -20,10 +26,11 @@ const ItemCard = ({ item }) => {
           src={
             photos && photos.length > 0
               ? `/uploads/items/${photos[0]}`
-              : "/assets/default-item.png"
+              : DEFAULT_ITEM_IMAGE
           }
           alt={title}
           className="w-full h-full object-cover"
+          onError={handleImageError} // Added onError handler
         />
         <span className={`absolute top-2 right-2 badge ${statusBadgeClass}`}>
           {statusText}

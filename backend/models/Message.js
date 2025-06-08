@@ -16,10 +16,11 @@ const MessageSchema = new mongoose.Schema({
     required: [true, 'Please add a message content'],
     trim: true
   },
-  read: {
-    type: Boolean,
-    default: false
-  },
+  readBy: [{ // New field for tracking users who have read the message
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: []
+  }],
   createdAt: {
     type: Date,
     default: Date.now

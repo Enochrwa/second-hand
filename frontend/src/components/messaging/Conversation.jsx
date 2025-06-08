@@ -16,33 +16,89 @@ const Conversation = ({ conversationId }) => {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [conversation, setConversation] = useState(null);
+  const [isFetchingMessages, setIsFetchingMessages] = useState(false); // For polling messages
+
+  const fetchMessagesAndUpdateState = async (currentConvId) => {
+    if (!currentConvId || isFetchingMessages) return;
+
+    setIsFetchingMessages(true);
+    try {
+      const msgResponse = await messageService.getMessagesByConversation(currentConvId);
+      const newMessages = msgResponse.data.data;
+      
+      setMessages((prevMessages) => {
+        // Simple replacement, as backend sends full list.
+        // Could be optimized to only update if newMessages are different from prevMessages.
+        return newMessages;
+      });
+
+      // After fetching messages (polling or initial), mark them as read
+      if (newMessages.length > 0) { // Only mark if there are messages
+        try {
+          await messageService.markMessagesAsRead(currentConvId);
+          // console.log(`Polling: Marked messages as read for conversation: ${currentConvId}`); // Removed
+        } catch (readErr) {
+          console.error('Polling: Error marking messages as read:', readErr); // Kept as per rationale
+          // Non-critical, don't disrupt user for polling error
+        }
+      }
+    } catch (err) {
+      console.error('Polling: Error fetching messages:', err);
+      // Don't set global error for polling, could be transient
+    } finally {
+      setIsFetchingMessages(false);
+    }
+  };
   
-  // Fetch conversation details and messages
+  // Effect for initial fetch of conversation details and messages, and setting up polling for messages
   useEffect(() => {
-    const fetchData = async () => {
-      if (!conversationId) return;
+    const fetchInitialDataAndPoll = async () => {
+      if (!conversationId) {
+        setConversation(null);
+        setMessages([]);
+        setError('');
+        return;
+      }
       
       setLoading(true);
       setError('');
-      
+      setConversation(null); // Reset conversation details on ID change
+      setMessages([]); // Reset messages on ID change
+
       try {
-        // Get conversation details
+        // 1. Fetch conversation details
         const convResponse = await messageService.getConversation(conversationId);
         setConversation(convResponse.data.data);
         
-        // Get messages
-        const msgResponse = await messageService.getMessagesByConversation(conversationId);
-        setMessages(msgResponse.data.data);
+        // 2. Initial fetch of messages and mark as read
+        await fetchMessagesAndUpdateState(conversationId);
+
       } catch (err) {
-        console.error('Error fetching conversation data:', err);
+        // console.error('Error fetching initial conversation data:', err); // Removed
         setError('Failed to load conversation. Please try again later.');
+        setConversation(null);
+        setMessages([]);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchData();
-  }, [conversationId]);
+    fetchInitialDataAndPoll();
+
+    // Setup polling for messages if conversationId is valid
+    let intervalId = null;
+    if (conversationId) {
+      intervalId = setInterval(() => {
+        fetchMessagesAndUpdateState(conversationId);
+      }, 7000); // Poll every 7 seconds for messages
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [conversationId, addNotification]); // addNotification is used in fetchMessagesAndUpdateState indirectly
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -66,8 +122,8 @@ const Conversation = ({ conversationId }) => {
       setMessages([...messages, response.data.data]);
       setNewMessage('');
     } catch (err) {
-      console.error('Error sending message:', err);
-      addNotification('Failed to send message. Please try again.', 'error');
+      // console.error('Error sending message:', err); // Removed
+      addNotification('Failed to send message: ' + (err.response?.data?.error || err.message), 'error');
     } finally {
       setSending(false);
     }

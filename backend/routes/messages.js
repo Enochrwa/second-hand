@@ -4,7 +4,8 @@ const {
   getConversation,
   createConversation,
   getMessagesByConversation,
-  sendMessage
+  sendMessage,
+  markMessagesAsRead // Added markMessagesAsRead
 } = require('../controllers/messageController');
 
 const router = express.Router();
@@ -20,6 +21,10 @@ router
 router
   .route('/conversations/:id')
   .get(protect, getConversation);
+
+router
+  .route('/conversations/:conversationId/read') // New route for marking messages as read
+  .post(protect, markMessagesAsRead);
 
 // Message routes
 router

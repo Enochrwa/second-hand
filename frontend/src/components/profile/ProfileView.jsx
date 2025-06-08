@@ -40,6 +40,7 @@ const ProfileView = () => {
             }
             alt={`${currentUser.firstName} ${currentUser.lastName}`}
             className="w-full h-full object-cover"
+            onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }} // Added onError
           />
         </div>
 

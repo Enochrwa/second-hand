@@ -38,19 +38,19 @@ const ProfileEdit = () => {
     }
 
     if (!currentUser) {
-      console.log("No current user, redirecting to login");
+      // console.log("No current user, redirecting to login"); // Removed
       addNotification("Please log in to edit your profile", "info");
       navigate("/login");
       return;
     }
 
     if (!currentUser._id) {
-      console.error("Current user has no ID:", currentUser);
+      // console.error("Current user has no ID:", currentUser); // Removed
       setError("Invalid user data. Please try logging in again.");
       return;
     }
 
-    console.log("Setting form values from user:", currentUser);
+    // console.log("Setting form values from user:", currentUser); // Removed
     setValues({
       firstName: currentUser.firstName || "",
       lastName: currentUser.lastName || "",
@@ -84,13 +84,13 @@ const ProfileEdit = () => {
 
     try {
       if (!currentUser || !currentUser._id) {
-        console.error("Submit - No current user:", currentUser); // Debug log
+        // console.error("Submit - No current user:", currentUser); // Removed
         setError("User information not available. Please log in again.");
         setIsSubmitting(false);
         return;
       }
 
-      console.log("Submitting update for user:", currentUser._id); // Debug log
+      // console.log("Submitting update for user:", currentUser._id); // Removed
 
       // Update profile
       const result = await updateProfile(currentUser._id, values);
@@ -101,9 +101,9 @@ const ProfileEdit = () => {
           try {
             await authService.uploadProfilePhoto(currentUser._id, profilePhoto);
           } catch (photoErr) {
-            console.error("Error uploading profile photo:", photoErr);
+            // console.error("Error uploading profile photo:", photoErr); // Removed
             addNotification(
-              "Profile updated but failed to upload photo",
+              "Profile updated but failed to upload photo: " + (photoErr.response?.data?.error || photoErr.message),
               "warning"
             );
             navigate("/profile");
@@ -117,16 +117,16 @@ const ProfileEdit = () => {
         setError(result.message);
       }
     } catch (err) {
-      console.error("Error updating profile:", err);
+      // console.error("Error updating profile:", err); // Removed
       setError(
-        "An error occurred while updating your profile. Please try again."
+        "An error occurred while updating your profile. Please try again: " + (err.response?.data?.error || err.message)
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  console.log("Render state:", { loading, currentUser }); // Debug log
+  // console.log("Render state:", { loading, currentUser }); // Removed
 
   if (loading) {
     return (

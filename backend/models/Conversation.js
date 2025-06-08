@@ -10,25 +10,10 @@ const ConversationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Item'
   },
-  lastMessage: {
-    content: String,
-    senderId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  lastMessage: { // Changed to be a direct reference to Message
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message'
   }
-});
+}, { timestamps: true }); // Added timestamps option
 
 module.exports = mongoose.model('Conversation', ConversationSchema);

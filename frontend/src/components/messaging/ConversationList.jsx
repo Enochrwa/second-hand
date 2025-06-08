@@ -12,24 +12,50 @@ const ConversationList = ({ onSelectConversation, selectedId }) => {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        const response = await messageService.getConversations();
-        setConversations(response.data.data);
-      } catch (err) {
-        console.error('Error fetching conversations:', err);
+  const [isFetching, setIsFetching] = useState(false); // To prevent multiple fetches at once from polling
+
+  const fetchConversations = async (isPolling = false) => {
+    if (isFetching && isPolling) return; // Skip polling if a fetch is already in progress
+
+    setIsFetching(true);
+    if (!isPolling) { // Only set loading true for initial fetch
+      setLoading(true);
+    }
+
+    try {
+      const response = await messageService.getConversations();
+      setConversations(response.data.data);
+      // setError(''); // Clear error on successful fetch
+    } catch (err) {
+      console.error('Error fetching conversations:', err);
+      // Don't set global error for polling failures, could be transient
+      if (!isPolling) {
         setError('Failed to load conversations. Please try again later.');
-      } finally {
+      } else {
+        // Optionally, show a small, non-intrusive indicator for polling errors
+        console.warn('Polling error for conversations:', err.message);
+      }
+    } finally {
+      if (!isPolling) {
         setLoading(false);
       }
-    };
-    
-    fetchConversations();
-  }, []);
+      setIsFetching(false);
+    }
+  };
   
-  if (loading) {
+  useEffect(() => {
+    fetchConversations(false); // Initial fetch
+
+    const intervalId = setInterval(() => {
+      fetchConversations(true); // Polling fetch
+    }, 15000); // Poll every 15 seconds
+
+    return () => {
+      clearInterval(intervalId); // Cleanup interval on component unmount
+    };
+  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
+  
+  if (loading && conversations.length === 0) { // Show loading spinner only if no conversations are displayed yet
     return (
       <div className="flex justify-center items-center py-8">
         <LoadingSpinner />
@@ -57,8 +83,7 @@ const ConversationList = ({ onSelectConversation, selectedId }) => {
           (p) => p._id !== currentUser._id
         );
         
-        // Check if there are unread messages
-        const hasUnreadMessages = false; // This would need to be implemented with the backend
+        const unreadCount = conversation.unreadCount || 0;
         
         return (
           <button
@@ -66,9 +91,9 @@ const ConversationList = ({ onSelectConversation, selectedId }) => {
             onClick={() => onSelectConversation(conversation._id)}
             className={`w-full text-left p-3 rounded-lg transition-colors ${
               selectedId === conversation._id
-                ? 'bg-primary bg-opacity-10'
+                ? 'bg-primary bg-opacity-10' // A lighter shade for selection
                 : 'hover:bg-gray-100'
-            }`}
+            } ${unreadCount > 0 ? 'font-semibold' : ''}`} // Make text bold if unread
           >
             <div className="flex items-center space-x-3">
               <div className="relative">
@@ -77,27 +102,32 @@ const ConversationList = ({ onSelectConversation, selectedId }) => {
                   alt={`${otherParticipant?.firstName} ${otherParticipant?.lastName}`}
                   className="w-10 h-10 rounded-full object-cover"
                 />
-                {hasUnreadMessages && (
-                  <span className="absolute top-0 right-0 w-3 h-3 bg-primary rounded-full"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                    {unreadCount}
+                  </span>
                 )}
               </div>
               
               <div className="flex-grow min-w-0">
                 <div className="flex justify-between items-baseline">
-                  <h4 className="font-medium truncate">
+                  <h4 className={`truncate ${unreadCount > 0 ? 'font-bold text-gray-900' : 'font-medium text-gray-800'}`}>
                     {otherParticipant?.firstName} {otherParticipant?.lastName}
                   </h4>
-                  <span className="text-xs text-gray-500">
-                    {new Date(conversation.updatedAt).toLocaleDateString()}
+                  <span className={`text-xs ${unreadCount > 0 ? 'text-red-500 font-semibold' : 'text-gray-500'}`}>
+                    {new Date(conversation.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    {' '}
+                    {new Date(conversation.updatedAt).toLocaleDateString([], { day: '2-digit', month: 'short' })}
                   </span>
                 </div>
                 
-                <p className="text-sm text-gray-600 truncate">
+                <p className={`text-sm truncate ${unreadCount > 0 ? 'text-gray-700 font-semibold' : 'text-gray-600'}`}>
+                  {conversation.lastMessage?.senderId?._id === currentUser._id ? 'You: ' : ''}
                   {conversation.lastMessage?.content || 'No messages yet'}
                 </p>
               </div>
             </div>
-            
+
             {conversation.itemId && (
               <div className="mt-2 flex items-center space-x-2">
                 <div className="w-8 h-8 bg-gray-200 rounded overflow-hidden flex-shrink-0">

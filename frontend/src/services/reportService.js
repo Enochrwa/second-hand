@@ -25,6 +25,11 @@ const reportService = {
   getReports: () => {
     return api.get('/reports');
   },
+
+  // Get a single report by ID (admin only)
+  getReport: (id) => {
+    return api.get(`/reports/${id}`);
+  },
   
   // Create a report
   createReport: (reportData) => {

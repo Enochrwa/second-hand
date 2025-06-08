@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import AdminDashboard from '../components/admin/AdminDashboard';
 import PendingItems from '../components/admin/PendingItems';
 import ReportsList from '../components/admin/ReportsList';
-
+import ViewReport from '../components/admin/ViewReport'; // Import ViewReport
 import ReportDownloads from '../components/admin/ReportDownloads';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -36,6 +36,7 @@ const AdminPage = () => {
         <Route path="/" element={<AdminDashboard />} />
         <Route path="/items/pending" element={<PendingItems />} />
         <Route path="/reports" element={<ReportsList />} />
+        <Route path="/reports/:id" element={<ViewReport />} /> {/* Added route for ViewReport */}
         <Route path="/reports/downloads" element={<ReportDownloads />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>

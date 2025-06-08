@@ -62,6 +62,11 @@ const messageService = {
   sendMessage: (messageData) => {
     return api.post("/messages", messageData);
   },
+
+  // Mark messages in a conversation as read
+  markMessagesAsRead: (conversationId) => {
+    return api.post(`/conversations/${conversationId}/read`);
+  },
 };
 
 export default messageService;

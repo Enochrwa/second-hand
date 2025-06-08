@@ -3,6 +3,7 @@ const path = require('path');
 const asyncHandler = require('../middleware/async');
 const ErrorResponse = require('../utils/errorResponse');
 const Item = require('../models/Item');
+const Report = require('../models/Report'); // Added Report model
 
 // @desc    Generate Excel report of items (sold and available)
 // @route   GET /api/admin/reports/items-inventory
@@ -125,6 +126,77 @@ exports.generateItemsInventoryReport = asyncHandler(async (req, res, next) => {
   
   // End the response
   res.end();
+});
+
+// @desc    Get all reports
+// @route   GET /api/admin/reports
+// @access  Private/Admin
+exports.getReports = asyncHandler(async (req, res, next) => {
+  const reports = await Report.find()
+    .populate('reporterId', 'firstName lastName')
+    .populate('itemId', 'title')
+    .populate('userId', 'firstName lastName');
+
+  res.status(200).json({
+    success: true,
+    count: reports.length,
+    data: reports
+  });
+});
+
+// @desc    Get single report by ID
+// @route   GET /api/admin/reports/:id
+// @access  Private/Admin
+exports.getReportById = asyncHandler(async (req, res, next) => {
+  const report = await Report.findById(req.params.id)
+    .populate('reporterId', 'firstName lastName email')
+    .populate('itemId', 'title description category')
+    .populate('userId', 'firstName lastName email'); // Assuming this is the reported user
+
+  if (!report) {
+    return next(
+      new ErrorResponse(`Report not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  res.status(200).json({
+    success: true,
+    data: report
+  });
+});
+
+// @desc    Update a report status
+// @route   PUT /api/admin/reports/:id
+// @access  Private/Admin
+exports.updateReport = asyncHandler(async (req, res, next) => {
+  const { status } = req.body;
+
+  if (!status) {
+    return next(new ErrorResponse('Please provide a status', 400));
+  }
+
+  // Check if status is valid
+  const validStatuses = ['pending', 'resolved', 'dismissed'];
+  if (!validStatuses.includes(status)) {
+    return next(new ErrorResponse(`Invalid status: ${status}. Must be one of ${validStatuses.join(', ')}`, 400));
+  }
+
+  let report = await Report.findById(req.params.id);
+
+  if (!report) {
+    return next(
+      new ErrorResponse(`Report not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  report.status = status;
+  report.updatedAt = Date.now(); // Manually update updatedAt if not automatically handled by schema
+  await report.save();
+
+  res.status(200).json({
+    success: true,
+    data: report
+  });
 });
 
 // @desc    Generate Excel report of items by category

@@ -9,6 +9,7 @@ import { ITEM_STATUS } from "../../utils/constants";
 import LoadingSpinner from "../common/LoadingSpinner";
 import ErrorMessage from "../common/ErrorMessage";
 import ContactSellerModal from "../modals/ContactSellerModal";
+import ConfirmationModal from "../common/ConfirmationModal"; // Import ConfirmationModal
 import {
   DEFAULT_PROFILE_IMAGE,
   DEFAULT_ITEM_IMAGE,
@@ -25,6 +26,7 @@ const ItemDetail = () => {
   const [error, setError] = useState("");
   const [showContactModal, setShowContactModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false); // State for delete modal
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -32,7 +34,7 @@ const ItemDetail = () => {
         const response = await itemService.getItem(id);
         setItem(response.data.data);
       } catch (err) {
-        console.error("Error fetching item:", err);
+        // console.error("Error fetching item:", err); // Removed
         setError("Failed to load item details. Please try again later.");
       } finally {
         setLoading(false);
@@ -48,21 +50,28 @@ const ItemDetail = () => {
       setItem({ ...item, status: newStatus });
       addNotification(`Item marked as ${newStatus}`, "success");
     } catch (err) {
-      console.error("Error updating item status:", err);
-      addNotification("Failed to update item status", "error");
+      // console.error("Error updating item status:", err); // Removed
+      addNotification("Failed to update item status: " + (err.response?.data?.error || err.message), "error");
     }
   };
 
-  const handleDelete = async () => {
-    if (window.confirm("Are you sure you want to delete this item?")) {
-      try {
-        await itemService.deleteItem(id);
-        addNotification("Item deleted successfully", "success");
-        navigate("/profile");
-      } catch (err) {
-        console.error("Error deleting item:", err);
-        addNotification("Failed to delete item", "error");
-      }
+  const openDeleteModal = () => {
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+  };
+
+  const confirmDeleteItem = async () => {
+    closeDeleteModal(); // Close modal first
+    try {
+      await itemService.deleteItem(id);
+      addNotification("Item deleted successfully", "success");
+      navigate("/profile"); // Navigate after successful deletion
+    } catch (err) {
+      // console.error("Error deleting item:", err); // Removed
+      addNotification("Failed to delete item: " + (err.response?.data?.error || err.message), "error");
     }
   };
 
@@ -104,6 +113,7 @@ const ItemDetail = () => {
               }
               alt={item.title}
               className="w-full h-full object-contain"
+              onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_ITEM_IMAGE; }} // Added onError
             />
           </div>
 
@@ -121,8 +131,9 @@ const ItemDetail = () => {
                 >
                   <img
                     src={`/uploads/items/${photo}`}
-                    alt={`${item.title} - ${index + 1}`}
+                    alt={`${item.title} - Thumbnail ${index + 1}`}
                     className="w-full h-full object-cover"
+                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_ITEM_IMAGE; }} // Added onError
                   />
                 </button>
               ))}
@@ -180,6 +191,7 @@ const ItemDetail = () => {
                   }
                   alt={`${item.userId.firstName} ${item.userId.lastName}`}
                   className="w-12 h-12 rounded-full object-cover"
+                  onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }} // Added onError
                 />
                 <div>
                   <p className="font-medium">
@@ -229,7 +241,7 @@ const ItemDetail = () => {
                   </button>
                 )}
 
-                <button onClick={handleDelete} className="btn btn-danger">
+                <button onClick={openDeleteModal} className="btn btn-danger">
                   Delete Item
                 </button>
               </>
@@ -255,6 +267,16 @@ const ItemDetail = () => {
           onClose={() => setShowContactModal(false)}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDeleteItem}
+        title="Confirm Deletion"
+        message="Are you sure you want to delete this item? This action cannot be undone."
+        confirmText="Delete"
+        confirmButtonClass="bg-red-600 hover:bg-red-700 focus:ring-red-500 text-white"
+      />
     </div>
   );
 };
